@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自动打款 · Auto-Payout</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0e11; color: #e6e9ee; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #8b94a3; font-size: 13px; margin-bottom: 20px; }
+  .card { background: #14181d; border: 1px solid #232a32; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 14px; border-bottom: 1px solid #1e242b; }
+  .row:last-child { border-bottom: none; }
+  .row .k { color: #8b94a3; }
+  .row .v { text-align: right; word-break: break-all; }
+  .badge { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #1d2b1d; color: #7dd87d; }
+  .badge.dry { background: #2b2417; color: #e0b34a; }
+  .badge.warn { background: #2b1d1d; color: #f87171; }
+  label { display: block; font-size: 13px; color: #8b94a3; margin: 12px 0 4px; }
+  input[type=text], select { width: 100%; background: #0b0e11; border: 1px solid #2a323c; color: #e6e9ee; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: monospace; }
+  select { font-family: inherit; }
+  input[type=text]:focus, select:focus { outline: none; border-color: #3b82f6; }
+  button { margin-top: 14px; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 11px 18px; font-size: 15px; cursor: pointer; }
+  button.secondary { background: #1f2937; color: #cbd5e1; margin-left: 8px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
+  .msg.ok { color: #7dd87d; }
+  .msg.err { color: #f87171; }
+  .check { font-size: 13px; color: #8b94a3; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #1e242b; word-break: break-all; }
+  th { color: #8b94a3; font-weight: 500; }
+  a { color: #60a5fa; text-decoration: none; }
+  .empty { color: #8b94a3; font-size: 13px; padding: 8px 0; }
+  .note { font-size: 13px; color: #8b94a3; line-height: 1.7; }
+  .note b { color: #cbd5e1; }
+  code { font-family: monospace; font-size: 12px; background: #0b0e11; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>自动打款 <span style="color:#8b94a3;font-size:14px">Auto-Payout</span></h1>
+  <div class="sub">预登记 → 铸满指定份数 → 热钱包自动转 USDT 到你的收款地址。全程链上可查，不造记录。</div>
+
+  <div class="card">
+    <h2>项目</h2>
+    <select id="project"></select>
+    <div id="terms" style="margin-top:8px"><div class="empty">加载中…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>预登记</h2>
+    <label>铸造钱包地址（mint 用的钱包）</label>
+    <input type="text" id="minter" placeholder="0x…" autocomplete="off">
+    <label>收款地址（收 USDT 的 BSC 地址）</label>
+    <input type="text" id="recipient" placeholder="0x…" autocomplete="off">
+    <div class="check"><input type="checkbox" id="claim"> 覆盖/认领已有登记（需要下面用铸造钱包签名）</div>
+    <div>
+      <button id="submitBtn">提交登记</button>
+      <button id="signBtn" class="secondary" type="button">用铸造钱包签名验证（可选）</button>
+    </div>
+    <div id="msg" class="msg"></div>
+    <div class="note" style="margin-top:10px">
+      签名是免费的链下签名（personal_sign），不花 gas、不授权任何代币。带签名的登记会被锁定，别人无法用你的铸造地址重复登记；没签名的登记可以被带签名的登记覆盖。
+      登记有效期 24 小时，过期要重新登记。一个登记只兑付一次。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>打款记录 <span style="color:#8b94a3;font-weight:400;font-size:12px">（只显示真实打款，每笔都可在 BscScan 核对）</span></h2>
+    <div id="payouts"><div class="empty">加载中…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>使用说明</h2>
+    <div class="note">
+      1. 选择项目，在这里登记你的铸造钱包地址和收款地址。<br>
+      2. <b>铸造时推荐人必须填运营方的推荐人地址</b>（见上方规则卡片），否则链上返佣不会到运营方，也就不会给你打款。<br>
+      3. 铸满 <b>指定份数（默认 10 份）</b>后，后端监听到链上铸造事件，约 10–20 秒内自动打款到你的收款地址。<br>
+      4. 如果登记后 24 小时内没铸造，登记过期，需要重新登记。<br>
+      5. 打款记录为空就是还没人兑付过——这里不展示任何编造的“历史订单”。<br>
+      6. 结算价可能是动态的：随铸造进度上调；底池低于阈值时切到稳健价。当前实时价见上方规则卡片。
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const short = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
+let signature = '';
+let projects = [];
+let statusData = null;
+
+function currentProject() {
+  return projects.find(p => p.id === $('project').value) || projects[0];
+}
+
+async function loadConfig() {
+  const cfg = await fetch('/api/config').then(r => r.json());
+  projects = cfg.projects || [];
+  const sel = $('project');
+  sel.innerHTML = projects.map(p => `<option value="${p.id}">${p.label}</option>`).join('');
+  sel.onchange = () => { loadTerms(); loadPayouts(); };
+}
+
+async function loadTerms() {
+  const p = currentProject();
+  if (!p) { $('terms').innerHTML = '<div class="empty">暂无项目。</div>'; return; }
+  try {
+    const [q, st] = await Promise.all([
+      fetch('/api/quote?project=' + encodeURIComponent(p.id)).then(r => r.json()),
+      fetch('/api/status').then(r => r.json()),
+    ]);
+    statusData = st;
+    const pst = (st.projects || []).find(x => x.id === p.id) || {};
+    const runway = pst.poolRunwayHours === null || pst.poolRunwayHours === undefined ? '—' : (pst.poolRunwayHours > 72 ? '>72 小时' : pst.poolRunwayHours.toFixed(1) + ' 小时');
+    $('terms').innerHTML = `
+      <div class="row"><span class="k">当前结算价</span><span class="v">${q.payoutUsdt} USDT / ${p.requiredShares} 份 ${q.guardOk ? '' : '<span class="badge warn">守卫拦截：暂不打款</span>'}</span></div>
+      <div class="row"><span class="k">已铸</span><span class="v">${q.totalMinted === null || q.totalMinted === undefined ? '—' : q.totalMinted.toLocaleString() + ' 份'}</span></div>
+      <div class="row"><span class="k">底池</span><span class="v">${q.poolBnb === null || q.poolBnb === undefined ? '—' : q.poolBnb.toFixed(2) + ' BNB'} · 预计可用 ${runway}</span></div>
+      <div class="row"><span class="k">需铸满</span><span class="v">${p.requiredShares} 份（一笔）</span></div>
+      <div class="row"><span class="k">登记有效期</span><span class="v">${p.registrationTtlHours} 小时</span></div>
+      <div class="row"><span class="k">铸造合约</span><span class="v"><code>${p.mintContract}</code></span></div>
+      <div class="row"><span class="k">推荐人地址（铸造时填这个）</span><span class="v"><code>${p.operatorReferrer || '未设置'}</code></span></div>
+      <div class="row"><span class="k">热钱包</span><span class="v"><code>${st.hotWallet || '未设置'}</code>（余额 ${st.hotWalletUsdt === null || st.hotWalletUsdt === undefined ? '—' : Number(st.hotWalletUsdt).toFixed(2) + ' USDT'}）</span></div>
+      <div class="row"><span class="k">运行状态</span><span class="v">${st.dryRun ? '<span class="badge dry">干跑模式（不发真钱）</span>' : '<span class="badge">已上线</span>'} · 已扫到区块 ${pst.lastScannedBlock ?? '—'}</span></div>`;
+  } catch (e) {
+    $('terms').innerHTML = '<div class="empty">规则加载失败，请稍后刷新。</div>';
+  }
+}
+
+async function loadPayouts() {
+  const p = currentProject();
+  if (!p) return;
+  try {
+    const d = await fetch('/api/payouts?project=' + encodeURIComponent(p.id)).then(r => r.json());
+    const rows = d.payouts || [];
+    if (!rows.length) { $('payouts').innerHTML = '<div class="empty">暂无打款记录。</div>'; return; }
+    $('payouts').innerHTML = '<table><tr><th>时间</th><th>铸造者</th><th>收款</th><th>金额</th><th>交易</th></tr>' +
+      rows.map(p => `<tr><td>${new Date(p.createdAt).toLocaleString()}</td><td>${short(p.minter)}</td><td>${short(p.recipient)}</td><td>${p.amountUsdt} USDT</td><td>${p.txHash ? `<a href="https://bscscan.com/tx/${p.txHash}" target="_blank" rel="noopener">查看</a>` : '—'}</td></tr>`).join('') + '</table>';
+  } catch (e) {
+    $('payouts').innerHTML = '<div class="empty">记录加载失败，请稍后刷新。</div>';
+  }
+}
+
+function setMsg(text, ok) {
+  const el = $('msg');
+  el.textContent = text;
+  el.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+$('signBtn').onclick = async () => {
+  const minter = $('minter').value.trim();
+  const recipient = $('recipient').value.trim();
+  if (!minter || !recipient) { setMsg('请先填铸造钱包地址和收款地址。', false); return; }
+  if (!window.ethereum) { setMsg('未检测到钱包插件（如 MetaMask）。不签名也可以登记，只是不锁定。', false); return; }
+  try {
+    const msg = `Register auto-payout: minter ${minter.toLowerCase()} pays out to ${recipient.toLowerCase()} (BSC USDT).`;
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (accounts[0].toLowerCase() !== minter.toLowerCase()) { setMsg('钱包当前账号与填写的铸造地址不一致，请切换钱包账号。', false); return; }
+    signature = await window.ethereum.request({ method: 'personal_sign', params: [msg, accounts[0]] });
+    setMsg('签名完成，已锁定登记。', true);
+  } catch (e) {
+    setMsg('签名失败：' + (e.message || e), false);
+  }
+};
+
+$('submitBtn').onclick = async () => {
+  const minter = $('minter').value.trim();
+  const recipient = $('recipient').value.trim();
+  const p = currentProject();
+  if (!minter || !recipient) { setMsg('请填写铸造钱包地址和收款地址。', false); return; }
+  if (!p) { setMsg('没有可选项目。', false); return; }
+  $('submitBtn').disabled = true;
+  try {
+    const path = $('claim').checked ? '/api/preregister/claim' : '/api/preregister';
+    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: p.id, minter, recipient, signature: signature || undefined }) });
+    const d = await res.json();
+    if (d.ok) {
+      setMsg(`登记成功，有效期至 ${new Date(d.expiresAt).toLocaleString()}。${d.verified ? '已签名锁定。' : ''}请在有效期内用推荐人地址铸满指定份数。`, true);
+    } else {
+      setMsg('登记失败：' + (d.error || '未知错误'), false);
+    }
+  } catch (e) {
+    setMsg('请求失败：' + e.message, false);
+  } finally {
+    $('submitBtn').disabled = false;
+  }
+};
+
+(async () => {
+  await loadConfig();
+  await loadTerms();
+  await loadPayouts();
+  setInterval(() => { loadTerms(); loadPayouts(); }, 30000);
+})();
+</script>
+</body>
+</html>
