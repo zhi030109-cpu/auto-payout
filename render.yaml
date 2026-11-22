@@ -1,0 +1,22 @@
+# Render Blueprint: deploy with "New Blueprint" in the Render dashboard,
+# or create a Web Service from this repo and use these settings.
+# NOTE: the free plan sleeps after 15 minutes without traffic, which stops
+# the 10-second listener loop. For a 24/7 payout service use a paid
+# instance (or Railway Hobby). Free is fine for a demo.
+services:
+  - type: web
+    name: auto-payout
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: DRY_RUN
+        value: "true"
+      - key: LOG_MODE
+        value: receipts
+      - key: BATCH_WINDOW_SECONDS
+        value: "0"
+      # Set PROJECTS_JSON in the Render dashboard (Environment tab) — it is
+      # long. See .env.example for the Agent ID $AI + BIBI example.
