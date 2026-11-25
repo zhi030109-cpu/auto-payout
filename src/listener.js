@@ -63,6 +63,18 @@ async function handleMint({ minter, shares, referrer, txHash, blockNumber, proje
   if (state.processedTxHashes.length > 5000) state.processedTxHashes = state.processedTxHashes.slice(-5000);
   db.saveState(state);
 
+  // Record every captured mint (paid or not) so manual verification can
+  // answer "did this minter mint, how many shares, was the referrer
+  // right" from the server's own records instead of guessing.
+  try {
+    const mints = db.mints();
+    if (!mints.some((m) => m.projectId === project.id && m.txHash.toLowerCase() === txHash.toLowerCase())) {
+      mints.push({ projectId: project.id, minter, shares, referrer: referrer || null, txHash, blockNumber, createdAt: nowMs() });
+      if (mints.length > 5000) mints.splice(0, mints.length - 5000);
+      db.saveMints(mints);
+    }
+  } catch { /* mint record is best-effort; payout logic must not depend on it */ }
+
   console.log(`[listener:${project.id}] mint detected: minter=${minter} shares=${shares} referrer=${referrer || 'n/a'} tx=${txHash} block=${blockNumber}`);
   if (project.operatorReferrer && referrer && referrer.toLowerCase() !== project.operatorReferrer.toLowerCase()) {
     console.log(`[listener:${project.id}] skip: referrer ${referrer} is not the operator referrer ${project.operatorReferrer} (no rebate for this mint)`);
@@ -278,4 +290,4 @@ function startListener() {
   }
 }
 
-module.exports = { startListener, tick, handleMint, handleLog, getChainState, poolRunwayHours, flushQueue };
+module.exports = { startListener, tick, handleMint, handleLog, getChainState, poolRunwayHours, flushQueue, paidTodayUsdt };

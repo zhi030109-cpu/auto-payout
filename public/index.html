@@ -57,6 +57,12 @@
   .statusline .ok { color: #15803d; }
   pre.prompt { white-space: pre-wrap; word-break: break-word; background: #f8fafc; color: #0f172a; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.6; max-height: 320px; overflow: auto; margin: 12px 0 0; }
   .warnbox { background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #92400e; line-height: 1.6; margin-top: 12px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px; }
+  .tab { flex: 1; margin-top: 0; background: #ffffff; color: #0f172a; border: 1px solid transparent; border-radius: 8px; padding: 10px 6px; font-size: 14px; }
+  .tab.active { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
+  .infobox { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 14px; color: #166534; line-height: 1.7; margin-bottom: 4px; }
+  button.btn-green { background: #16a34a; }
+  button.btn-green:disabled { background: #94a3b8; }
 </style>
 </head>
 <body>
@@ -87,20 +93,51 @@
   </div>
 
   <div class="card">
-    <h2>预登记</h2>
-    <label>铸造钱包地址（mint 用的钱包）</label>
-    <input type="text" id="minter" placeholder="0x…" autocomplete="off">
-    <label>收款地址（收 USDT 的 BSC 地址）</label>
-    <input type="text" id="recipient" placeholder="0x…" autocomplete="off">
-    <div class="check"><input type="checkbox" id="claim"> 覆盖/认领已有登记（需要下面用铸造钱包签名）</div>
-    <div>
-      <button id="submitBtn">提交预登记并锁价</button>
-      <button id="signBtn" class="secondary" type="button">用铸造钱包签名验证（可选）</button>
+    <div class="tabs">
+      <button class="tab active" type="button" data-tab="1">1. 预登记锁价</button>
+      <button class="tab" type="button" data-tab="2">2. 手动核验/催款</button>
+      <button class="tab" type="button" data-tab="3">3. 我的打款记录</button>
     </div>
-    <div id="msg" class="msg"></div>
-    <div class="note" style="margin-top:10px">
-      签名是免费的链下签名（personal_sign），不花 gas、不授权任何代币。带签名的登记会被锁定，别人无法用你的铸造地址重复登记；没签名的登记可以被带签名的登记覆盖。
-      登记有效期 24 小时，过期要重新登记。一个登记只兑付一次。
+
+    <div class="tabpane" id="pane1">
+      <h2>预登记</h2>
+      <label>铸造钱包地址（mint 用的钱包）</label>
+      <input type="text" id="minter" placeholder="0x…" autocomplete="off">
+      <label>收款地址（收 USDT 的 BSC 地址）</label>
+      <input type="text" id="recipient" placeholder="0x…" autocomplete="off">
+      <div class="check"><input type="checkbox" id="claim"> 覆盖/认领已有登记（需要下面用铸造钱包签名）</div>
+      <div>
+        <button id="submitBtn">提交预登记并锁价</button>
+        <button id="signBtn" class="secondary" type="button">用铸造钱包签名验证（可选）</button>
+      </div>
+      <div id="msg" class="msg"></div>
+      <div class="note" style="margin-top:10px">
+        签名是免费的链下签名（personal_sign），不花 gas、不授权任何代币。带签名的登记会被锁定，别人无法用你的铸造地址重复登记；没签名的登记可以被带签名的登记覆盖。
+        登记有效期 24 小时，过期要重新登记。一个登记只兑付一次。
+      </div>
+    </div>
+
+    <div class="tabpane" id="pane2" style="display:none">
+      <div class="infobox">自动打款已启用：正常预登记并铸造满 10 份后，系统会在 10~20 秒内自动打款到账，无需手动操作。若超过 1 分钟未到账，可在此批量检查具体原因或手动触发补领。</div>
+      <label>已铸造的钱包地址或 AgentID（支持换行 / 空格 / 逗号，单次最多 100 个）</label>
+      <textarea id="verifyMinters" placeholder="0x1111...&#10;alice.ai&#10;0x2222..."></textarea>
+      <label>收款地址（与第 1 步预登记时填写的收款地址一致）</label>
+      <input type="text" id="verifyRecipient" placeholder="0x…" autocomplete="off">
+      <div>
+        <button id="verifyBtn" type="button">1. 批量检查</button>
+        <button id="claimAllBtn" class="btn-green" type="button" disabled>2. 确认并立即打款</button>
+      </div>
+      <div id="verifyMsg" class="msg"></div>
+      <div id="verifyResults" style="margin-top:12px"></div>
+      <div class="note" style="margin-top:10px">核验只覆盖本次服务启动后监听扫过的铸造；铸造发生在服务重启前的，不在记录里。补领打到登记时的收款地址，改不了收款人；补领和自动打款走同一套检查（登记有效、推荐人正确、份数够、守卫通过、每日上限），一个登记只兑付一次。</div>
+    </div>
+
+    <div class="tabpane" id="pane3" style="display:none">
+      <h2>我的打款记录 <span style="color:#64748b;font-weight:400;font-size:12px">（只显示真实打款，每笔都可在 BscScan 核对）</span></h2>
+      <label>收款地址（与第 1 步一致）</label>
+      <input type="text" id="myRecipient" placeholder="0x…" autocomplete="off">
+      <div><button id="refreshMyPayoutsBtn" class="secondary" type="button" style="margin-left:0">刷新</button></div>
+      <div id="payouts" style="margin-top:8px"><div class="empty">请先填写收款地址，再点刷新。</div></div>
     </div>
   </div>
 
@@ -162,11 +199,6 @@
   </div>
 
   <div class="card">
-    <h2>打款记录 <span style="color:#64748b;font-weight:400;font-size:12px">（只显示真实打款，每笔都可在 BscScan 核对）</span> <button id="refreshPayoutsBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px">刷新</button></h2>
-    <div id="payouts"><div class="empty">加载中…</div></div>
-  </div>
-
-  <div class="card">
     <h2>规则说明</h2>
     <div class="note">
       1. 先预登记再铸造，登记 24 小时内有效，铸满 10 份才打款。<br>
@@ -194,7 +226,7 @@ async function loadConfig() {
   projects = cfg.projects || [];
   const sel = $('project');
   sel.innerHTML = projects.map(p => `<option value="${p.id}">${p.label}</option>`).join('');
-  sel.onchange = () => { loadTerms(); loadPayouts(); };
+  sel.onchange = () => { loadTerms(); loadMyPayouts(); };
 }
 
 async function loadTerms() {
@@ -240,13 +272,15 @@ async function loadTerms() {
   }
 }
 
-async function loadPayouts() {
+async function loadMyPayouts() {
   const p = currentProject();
   if (!p) return;
+  const recipient = $('myRecipient').value.trim();
+  if (!recipient) { $('payouts').innerHTML = '<div class="empty">请先填写收款地址，再点刷新。</div>'; return; }
   try {
-    const d = await fetch('/api/payouts?project=' + encodeURIComponent(p.id)).then(r => r.json());
+    const d = await fetch('/api/payouts?project=' + encodeURIComponent(p.id) + '&recipient=' + encodeURIComponent(recipient)).then(r => r.json());
     const rows = d.payouts || [];
-    if (!rows.length) { $('payouts').innerHTML = '<div class="empty">暂无打款记录。</div>'; return; }
+    if (!rows.length) { $('payouts').innerHTML = '<div class="empty">该收款地址暂无打款记录。</div>'; return; }
     $('payouts').innerHTML = '<table><tr><th>时间</th><th>铸造者</th><th>收款</th><th>金额</th><th>交易</th></tr>' +
       rows.map(p => `<tr><td>${new Date(p.createdAt).toLocaleString()}</td><td>${short(p.minter)}</td><td>${short(p.recipient)}</td><td>${p.amountUsdt} USDT</td><td>${p.txHash ? `<a href="https://bscscan.com/tx/${p.txHash}" target="_blank" rel="noopener">查看</a>` : '—'}</td></tr>`).join('') + '</table>';
   } catch (e) {
@@ -318,13 +352,115 @@ $('togglePromptBtn').onclick = () => {
   $('togglePromptBtn').textContent = open ? '收起全文' : '展开全文';
 };
 
-$('refreshPayoutsBtn').onclick = () => { loadPayouts(); };
+function showTab(n) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === String(n)));
+  [1, 2, 3].forEach(i => { $('pane' + i).style.display = i === n ? 'block' : 'none'; });
+  if (n === 2 && !$('verifyRecipient').value) $('verifyRecipient').value = $('recipient').value;
+  if (n === 3) {
+    if (!$('myRecipient').value) $('myRecipient').value = $('recipient').value;
+    loadMyPayouts();
+  }
+}
+document.querySelectorAll('.tab').forEach(t => { t.onclick = () => showTab(Number(t.dataset.tab)); });
+
+const VERDICT_LABEL = { eligible: '可补领', already_paid: '已打款', no_registration: '未登记', registration_expired: '登记过期', no_mint_found: '未扫到铸造', referrer_mismatch: '推荐人不对', insufficient_shares: '份数不足', recipient_mismatch: '收款地址不一致', unresolved: '查不到' };
+let eligibleList = [];
+
+function renderVerifyResults(d) {
+  eligibleList = (d.results || []).filter(r => r.verdict === 'eligible');
+  $('claimAllBtn').disabled = eligibleList.length === 0;
+  if (!d.results || !d.results.length) { $('verifyResults').innerHTML = '<div class="empty">无结果。</div>'; return; }
+  $('verifyResults').innerHTML = '<table><tr><th>钱包 / AgentID</th><th>登记</th><th>铸造</th><th>结论</th><th>操作</th></tr>' +
+    d.results.map((r, i) => {
+      const reg = r.registration ? (r.registration.paid ? '已兑付' : (r.registration.verified ? '有效 · 已签名' : '有效')) : '无';
+      const mint = r.mints && r.mints.length ? r.mints.map(m => m.shares + ' 份').join('，') : '—';
+      const badge = r.verdict === 'eligible' ? '<span class="badge">可补领</span>' : r.verdict === 'already_paid' ? '<span class="badge">已打款</span>' : '<span class="badge warn">' + (VERDICT_LABEL[r.verdict] || r.verdict) + '</span>';
+      const btn = r.verdict === 'eligible' ? `<button type="button" style="margin-top:0;padding:6px 12px;font-size:13px" onclick="claimOne(${i})">补领</button>` : '—';
+      const who = r.address ? short(r.address) + (r.handle ? '<br>' + r.handle : '') : r.input;
+      const tx = r.mints && r.mints.length && r.mints[0].txHash ? `<br><a href="https://bscscan.com/tx/${r.mints[0].txHash}" target="_blank" rel="noopener">铸造交易</a>` : '';
+      return `<tr data-idx="${i}"><td>${who}</td><td>${reg}</td><td>${mint}${tx}</td><td>${badge}<br><span style="font-size:12px;color:#64748b">${r.reason}</span></td><td>${btn}</td></tr>`;
+    }).join('') + '</table>' +
+    `<div class="note" style="margin-top:8px">${d.coverage ? d.coverage.note + '（已扫到区块 #' + (d.coverage.lastScannedBlock ?? '—') + '）' : ''}</div>`;
+  window._verifyData = d;
+}
+
+async function claimOne(i) {
+  const d = window._verifyData;
+  if (!d || !d.results || !d.results[i]) return;
+  const r = d.results[i];
+  const p = currentProject();
+  const recipient = $('verifyRecipient').value.trim();
+  if (!r.address || !recipient) return;
+  const btn = document.querySelector(`tr[data-idx="${i}"] button`);
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/manual-payout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: p.id, minter: r.address, recipient }) });
+    const out = await res.json();
+    if (out.ok) {
+      $('verifyMsg').textContent = `补领成功：${out.amountUsdt} USDT，状态 ${out.status}${out.txHash ? '，tx ' + out.txHash : ''}${out.dryRun ? '（干跑，未发真钱）' : ''}`;
+      $('verifyMsg').className = 'msg ok';
+      r.verdict = 'already_paid';
+      r.reason = `已补领 ${out.amountUsdt} USDT，状态 ${out.status}`;
+      renderVerifyResults(d);
+    } else {
+      $('verifyMsg').textContent = '补领失败：' + (out.error || '未知错误');
+      $('verifyMsg').className = 'msg err';
+      if (btn) btn.disabled = false;
+    }
+  } catch (e) {
+    $('verifyMsg').textContent = '请求失败：' + e.message;
+    $('verifyMsg').className = 'msg err';
+    if (btn) btn.disabled = false;
+  }
+}
+
+$('verifyBtn').onclick = async () => {
+  const p = currentProject();
+  const minters = $('verifyMinters').value.trim();
+  const recipient = $('verifyRecipient').value.trim();
+  if (!minters) { $('verifyMsg').textContent = '请先填写已铸造的钱包地址或 AgentID。'; $('verifyMsg').className = 'msg err'; return; }
+  if (!p) { $('verifyMsg').textContent = '没有可选项目。'; $('verifyMsg').className = 'msg err'; return; }
+  $('verifyBtn').disabled = true;
+  $('verifyMsg').textContent = '检查中…（AgentID 需逐个链上解析，请稍等）';
+  $('verifyMsg').className = 'msg';
+  try {
+    const res = await fetch('/api/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: p.id, minters, recipient: recipient || undefined }) });
+    const d = await res.json();
+    if (!d.ok) {
+      $('verifyMsg').textContent = '检查失败：' + (d.error || '未知错误');
+      $('verifyMsg').className = 'msg err';
+    } else {
+      const n = (d.results || []).filter(r => r.verdict === 'eligible').length;
+      const paid = (d.results || []).filter(r => r.verdict === 'already_paid').length;
+      $('verifyMsg').textContent = `检查完成：${d.results.length} 个地址，${n} 个可补领，${paid} 个已打款。`;
+      $('verifyMsg').className = 'msg ok';
+      renderVerifyResults(d);
+    }
+  } catch (e) {
+    $('verifyMsg').textContent = '请求失败：' + e.message;
+    $('verifyMsg').className = 'msg err';
+  } finally {
+    $('verifyBtn').disabled = false;
+  }
+};
+
+$('claimAllBtn').onclick = async () => {
+  if (!eligibleList.length) return;
+  $('claimAllBtn').disabled = true;
+  const d = window._verifyData;
+  for (let i = 0; i < d.results.length; i++) {
+    if (d.results[i].verdict === 'eligible') await claimOne(i);
+  }
+  $('claimAllBtn').disabled = eligibleList.length === 0;
+};
+
+$('refreshMyPayoutsBtn').onclick = () => { loadMyPayouts(); };
 
 (async () => {
   await loadConfig();
   await loadTerms();
-  await loadPayouts();
-  setInterval(() => { loadTerms(); loadPayouts(); }, 30000);
+  loadMyPayouts();
+  setInterval(() => { loadTerms(); loadMyPayouts(); }, 30000);
 })();
 </script>
 </body>

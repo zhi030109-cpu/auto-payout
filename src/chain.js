@@ -176,4 +176,25 @@ async function getBnbPriceUsd() {
   }
 }
 
-module.exports = { getProvider, getLatestBlock, mintTopic0, decodeMintLog, getMintLogs, getBnbPriceUsd, getBlockWithTxs, getTxReceipt, getTotalMinted, getBlockReceipts, getPoolBnb };
+// Agent ID registry: handle -> owner wallet. agentId = keccak256(handle
+// without the ".ai" suffix). Returns the owner address, or null when the
+// handle is not registered / the call fails.
+const AGENT_REGISTRY = '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F';
+const REGISTRY_ABI = ['function ownerOf(uint256 tokenId) view returns (address)'];
+
+async function resolveAgentId(handle) {
+  const name = String(handle || '').trim().replace(/\.ai$/i, '');
+  if (!name) return null;
+  try {
+    const p = await getProvider();
+    const registry = new ethers.Contract(AGENT_REGISTRY, REGISTRY_ABI, p);
+    const agentId = ethers.keccak256(ethers.toUtf8Bytes(name));
+    const owner = await registry.ownerOf(agentId);
+    if (!owner || owner === ethers.ZeroAddress) return null;
+    return ethers.getAddress(owner);
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { getProvider, getLatestBlock, mintTopic0, decodeMintLog, getMintLogs, getBnbPriceUsd, getBlockWithTxs, getTxReceipt, getTotalMinted, getBlockReceipts, getPoolBnb, resolveAgentId };

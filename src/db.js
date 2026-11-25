@@ -36,6 +36,12 @@ const db = {
   saveRegistrations: (rows) => write('registrations.json', rows),
   payouts: () => read('payouts.json', []),
   savePayouts: (rows) => write('payouts.json', rows),
+  // Every decoded mint the listener captures, paid or not. This is what
+  // manual verification reads: registration + payout + mint facts, all
+  // from the server's own records. Coverage starts when this service
+  // (re)started — mints from before the last restart are not in here.
+  mints: () => read('mints.json', []),
+  saveMints: (rows) => write('mints.json', rows),
   state: () => read('state.json', { lastScannedBlock: null, processedTxHashes: [] }),
   saveState: (s) => write('state.json', s),
 };
