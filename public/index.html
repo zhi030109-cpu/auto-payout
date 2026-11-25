@@ -142,23 +142,6 @@
   </div>
 
   <div class="card">
-    <h2><span style="color:#16a34a">●</span> 最新自动打款订单</h2>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-      <span class="badge blue" id="globalTotal" style="font-size:13px;padding:6px 12px">累计 0 笔 · 0 个号 · 已发 0.00 USDT</span>
-      <button id="refreshGlobalBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px">刷新</button>
-    </div>
-    <div id="globalPayouts"><div class="empty">加载中…</div></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
-      <span class="note" id="globalPageLabel">第 1 / 1 页（每页 10 条）</span>
-      <span>
-        <button id="globalPrevBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px" disabled>上一页</button>
-        <button id="globalNextBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px" disabled>下一页</button>
-      </span>
-    </div>
-    <div class="note" style="margin-top:8px">只显示真实打款，每笔都可在 BscScan 核对；列表仅保留最近 100 笔。打款记录为空就是还没人兑付过，这里不展示任何编造的“历史订单”。</div>
-  </div>
-
-  <div class="card">
     <h2>AI 自动代打提示词 <span style="color:#64748b;font-weight:400;font-size:12px">（币安 AI 钱包 BAW 专用）</span></h2>
     <div class="note">先预登记 + BAW 提前预览秒打 + 卖出提前预览。复制给你的代打 AI，按顺序做三件事，每一步执行前都必须先给你看预览、等你亲口确认才动手。</div>
     <div>
@@ -213,6 +196,23 @@
 5. 查卖出回执 status=1，核对 BNB 到账。卖完才算这一笔结束，不要留尾巴币等下一轮一起卖。
 6. 最后报一句话：铸造 10 份花了多少 BNB、卖出回了多少 BNB、自动打款 0.40 USDT 会在登记有效、推荐人正确的前提下由监听器在约 10–20 秒内打到收款地址（到账以 /api/payouts 的真实记录与 BscScan tx 为准，不许编造已打款）。</pre>
     <div class="warnbox">⚠️ 铸造前必看：请先在页面顶部完成预登记，预登记 24 小时内有效；铸造时推荐人必须填主钱包地址；每一步执行前都要先看预览、等你确认。</div>
+  </div>
+
+  <div class="card">
+    <h2><span style="color:#16a34a">●</span> 最新自动打款订单</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="badge blue" id="globalTotal" style="font-size:13px;padding:6px 12px">累计 0 笔 · 0 个号 · 已发 0.00 USDT</span>
+      <button id="refreshGlobalBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px">刷新</button>
+    </div>
+    <div id="globalPayouts"><div class="empty">加载中…</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <span class="note" id="globalPageLabel">第 1 / 1 页（每页 10 条）</span>
+      <span>
+        <button id="globalPrevBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px" disabled>上一页</button>
+        <button id="globalNextBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px" disabled>下一页</button>
+      </span>
+    </div>
+    <div class="note" style="margin-top:8px">只显示真实打款，每笔都可在 BscScan 核对；列表仅保留最近 100 笔。打款记录为空就是还没人兑付过，这里不展示任何编造的“历史订单”。</div>
   </div>
 
   <div class="card">
