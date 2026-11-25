@@ -142,6 +142,23 @@
   </div>
 
   <div class="card">
+    <h2><span style="color:#16a34a">●</span> 最新自动打款订单</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="badge blue" id="globalTotal" style="font-size:13px;padding:6px 12px">累计 0 笔 · 0 个号 · 已发 0.00 USDT</span>
+      <button id="refreshGlobalBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px">刷新</button>
+    </div>
+    <div id="globalPayouts"><div class="empty">加载中…</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <span class="note" id="globalPageLabel">第 1 / 1 页（每页 10 条）</span>
+      <span>
+        <button id="globalPrevBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px" disabled>上一页</button>
+        <button id="globalNextBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px" disabled>下一页</button>
+      </span>
+    </div>
+    <div class="note" style="margin-top:8px">只显示真实打款，每笔都可在 BscScan 核对；列表仅保留最近 100 笔。打款记录为空就是还没人兑付过，这里不展示任何编造的“历史订单”。</div>
+  </div>
+
+  <div class="card">
     <h2>AI 自动代打提示词 <span style="color:#64748b;font-weight:400;font-size:12px">（币安 AI 钱包 BAW 专用）</span></h2>
     <div class="note">先预登记 + BAW 提前预览秒打 + 卖出提前预览。复制给你的代打 AI，按顺序做三件事，每一步执行前都必须先给你看预览、等你亲口确认才动手。</div>
     <div>
@@ -226,7 +243,7 @@ async function loadConfig() {
   projects = cfg.projects || [];
   const sel = $('project');
   sel.innerHTML = projects.map(p => `<option value="${p.id}">${p.label}</option>`).join('');
-  sel.onchange = () => { loadTerms(); loadMyPayouts(); };
+  sel.onchange = () => { loadTerms(); loadMyPayouts(); loadGlobalPayouts(); };
 }
 
 async function loadTerms() {
@@ -456,11 +473,50 @@ $('claimAllBtn').onclick = async () => {
 
 $('refreshMyPayoutsBtn').onclick = () => { loadMyPayouts(); };
 
+let globalRows = [];
+let globalPage = 1;
+const GLOBAL_PAGE_SIZE = 10;
+
+function renderGlobalPayouts() {
+  const totalPages = Math.max(1, Math.ceil(globalRows.length / GLOBAL_PAGE_SIZE));
+  if (globalPage > totalPages) globalPage = totalPages;
+  if (globalPage < 1) globalPage = 1;
+  const pageRows = globalRows.slice((globalPage - 1) * GLOBAL_PAGE_SIZE, globalPage * GLOBAL_PAGE_SIZE);
+  if (!globalRows.length) {
+    $('globalPayouts').innerHTML = '<div class="empty">暂无打款记录。</div>';
+  } else {
+    $('globalPayouts').innerHTML = '<table><tr><th>打款时间</th><th>收款地址</th><th>实付金额</th><th>状态</th><th>链上交易</th></tr>' +
+      pageRows.map(p => `<tr><td>${new Date(p.createdAt).toLocaleString()}</td><td>${short(p.recipient)}</td><td>${p.amountUsdt} USDT</td><td><span class="badge">已打款</span></td><td>${p.txHash ? `<a href="https://bscscan.com/tx/${p.txHash}" target="_blank" rel="noopener">查看</a>` : '—'}</td></tr>`).join('') + '</table>';
+  }
+  $('globalPageLabel').textContent = `第 ${globalPage} / ${totalPages} 页（每页 ${GLOBAL_PAGE_SIZE} 条）`;
+  $('globalPrevBtn').disabled = globalPage <= 1;
+  $('globalNextBtn').disabled = globalPage >= totalPages;
+}
+
+async function loadGlobalPayouts() {
+  const p = currentProject();
+  if (!p) return;
+  try {
+    const d = await fetch('/api/payouts?project=' + encodeURIComponent(p.id)).then(r => r.json());
+    globalRows = d.payouts || [];
+    const t = d.total || { count: 0, uniqueMinters: 0, totalUsdt: 0 };
+    $('globalTotal').textContent = `累计 ${t.count} 笔 · ${t.uniqueMinters} 个号 · 已发 ${Number(t.totalUsdt).toFixed(2)} USDT`;
+    renderGlobalPayouts();
+  } catch (e) {
+    $('globalPayouts').innerHTML = '<div class="empty">记录加载失败，请稍后刷新。</div>';
+  }
+}
+
+$('refreshGlobalBtn').onclick = () => { loadGlobalPayouts(); };
+$('globalPrevBtn').onclick = () => { if (globalPage > 1) { globalPage--; renderGlobalPayouts(); } };
+$('globalNextBtn').onclick = () => { globalPage++; renderGlobalPayouts(); };
+
 (async () => {
   await loadConfig();
   await loadTerms();
   loadMyPayouts();
-  setInterval(() => { loadTerms(); loadMyPayouts(); }, 30000);
+  await loadGlobalPayouts();
+  setInterval(() => { loadTerms(); loadMyPayouts(); loadGlobalPayouts(); }, 30000);
 })();
 </script>
 </body>

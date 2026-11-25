@@ -317,8 +317,16 @@ function startServer() {
         const project = url.searchParams.get('project');
         let rows = db.payouts().filter((p) => p.status === 'paid');
         if (project) rows = rows.filter((p) => p.projectId === project);
+        // Totals are computed over ALL paid payouts for the project, not
+        // just the page returned below — the "latest orders" card shows
+        // these. They are real counts only; zero means no payout yet.
+        const total = {
+          count: rows.length,
+          uniqueMinters: new Set(rows.map((p) => p.minter.toLowerCase())).size,
+          totalUsdt: rows.reduce((s, p) => s + Number(p.amountUsdt || 0), 0),
+        };
         if (recipient) rows = rows.filter((p) => p.recipient.toLowerCase() === recipient.toLowerCase());
-        return sendJson(res, 200, { ok: true, payouts: rows.slice(-100).reverse() });
+        return sendJson(res, 200, { ok: true, payouts: rows.slice(-100).reverse(), total });
       }
       if (req.method === 'GET' && url.pathname === '/api/quote') {
         const project = getProject(url.searchParams.get('project'));
