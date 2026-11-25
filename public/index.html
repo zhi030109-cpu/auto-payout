@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>自动打款 · Auto-Payout</title>
+<title>自动打款 · BIBI · Auto-Payout</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   body { margin: 0; background: #0b0e11; color: #e6e9ee; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
   h1 { font-size: 22px; margin: 0 0 4px; }
-  .sub { color: #8b94a3; font-size: 13px; margin-bottom: 20px; }
+  .sub { color: #8b94a3; font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
   .card { background: #14181d; border: 1px solid #232a32; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
   .card h2 { font-size: 15px; margin: 0 0 12px; }
   .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 14px; border-bottom: 1px solid #1e242b; }
@@ -20,10 +20,12 @@
   .badge { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #1d2b1d; color: #7dd87d; }
   .badge.dry { background: #2b2417; color: #e0b34a; }
   .badge.warn { background: #2b1d1d; color: #f87171; }
+  .badge.blue { background: #1d2b4a; color: #93c5fd; }
   label { display: block; font-size: 13px; color: #8b94a3; margin: 12px 0 4px; }
-  input[type=text], select { width: 100%; background: #0b0e11; border: 1px solid #2a323c; color: #e6e9ee; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: monospace; }
+  input[type=text], select, textarea { width: 100%; background: #0b0e11; border: 1px solid #2a323c; color: #e6e9ee; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: monospace; }
   select { font-family: inherit; }
-  input[type=text]:focus, select:focus { outline: none; border-color: #3b82f6; }
+  textarea { font-family: inherit; min-height: 64px; resize: vertical; }
+  input[type=text]:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; }
   button { margin-top: 14px; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 11px 18px; font-size: 15px; cursor: pointer; }
   button.secondary { background: #1f2937; color: #cbd5e1; margin-left: 8px; }
   button:disabled { opacity: .5; cursor: default; }
@@ -39,17 +41,49 @@
   .note { font-size: 13px; color: #8b94a3; line-height: 1.7; }
   .note b { color: #cbd5e1; }
   code { font-family: monospace; font-size: 12px; background: #0b0e11; padding: 1px 5px; border-radius: 4px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: #14181d; border: 1px solid #232a32; border-radius: 12px; padding: 14px; }
+  .stat .k { font-size: 12px; color: #8b94a3; }
+  .stat .v { font-size: 20px; font-weight: 700; margin-top: 4px; word-break: break-all; }
+  .stat .s { font-size: 12px; color: #8b94a3; margin-top: 4px; line-height: 1.5; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 640px) { .steps { grid-template-columns: 1fr; } }
+  .step { background: #14181d; border: 1px solid #232a32; border-radius: 12px; padding: 14px; }
+  .step .n { display: inline-block; background: #2563eb; color: #fff; border-radius: 999px; font-size: 12px; padding: 2px 8px; margin-bottom: 8px; }
+  .step .t { font-size: 14px; font-weight: 600; }
+  .step .d { font-size: 12px; color: #8b94a3; margin-top: 4px; line-height: 1.6; }
+  .statusline { font-size: 13px; color: #8b94a3; margin-bottom: 16px; line-height: 1.7; }
+  .statusline .ok { color: #7dd87d; }
+  pre.prompt { white-space: pre-wrap; word-break: break-word; background: #0b0e11; border: 1px solid #232a32; border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.6; max-height: 320px; overflow: auto; margin: 12px 0 0; }
+  .warnbox { background: #2b2417; border: 1px solid #4a3a17; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #e0b34a; line-height: 1.6; margin-top: 12px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>自动打款 <span style="color:#8b94a3;font-size:14px">Auto-Payout</span></h1>
-  <div class="sub">预登记 → 铸满指定份数 → 热钱包自动转 USDT 到你的收款地址。全程链上可查，不造记录。</div>
+  <h1>自动打款 <span style="color:#8b94a3;font-size:14px">BIBI · Auto-Payout</span> <span id="liveBadge"></span></h1>
+  <div class="sub">预登记 → 经推荐人铸满 10 份 → 链上自动监听，10–20 秒打款 BSC USDT。不用手动领，不用等审核。全程链上可查，不造记录。</div>
+
+  <div class="statusline" id="statusLine">加载中…</div>
+
+  <div class="stats">
+    <div class="stat"><div class="k">当前结算价</div><div class="v" id="statPrice">—</div><div class="s" id="statPriceSub">每 10 份</div></div>
+    <div class="stat"><div class="k">已铸</div><div class="v" id="statMinted">—</div><div class="s">份 · 实时链上读数</div></div>
+    <div class="stat"><div class="k">底池 BNB</div><div class="v" id="statPool">—</div><div class="s" id="statPoolSub">PancakeSwap V2 储备</div></div>
+    <div class="stat"><div class="k">热钱包余额</div><div class="v" id="statHot">—</div><div class="s" id="statHotSub">只放运营浮金</div></div>
+  </div>
+
+  <div class="steps">
+    <div class="step"><span class="n">1</span><div class="t">预登记锁价</div><div class="d">铸造前先登记铸造钱包 + 收款地址，24 小时内有效。一个登记只兑付一次。</div></div>
+    <div class="step"><span class="n">2</span><div class="t">经推荐人铸满 10 份</div><div class="d">铸造时推荐人必须填主钱包地址，否则返佣不到账、不打款。一笔铸满 10 份。</div></div>
+    <div class="step"><span class="n">3</span><div class="t">自动打款到账</div><div class="d">监听到链上铸造事件，约 10–20 秒自动转 USDT 到你的收款地址，可在 BscScan 核对。</div></div>
+  </div>
 
   <div class="card">
     <h2>项目</h2>
     <select id="project"></select>
     <div id="terms" style="margin-top:8px"><div class="empty">加载中…</div></div>
+    <div id="netLine" style="margin-top:8px"></div>
   </div>
 
   <div class="card">
@@ -60,7 +94,7 @@
     <input type="text" id="recipient" placeholder="0x…" autocomplete="off">
     <div class="check"><input type="checkbox" id="claim"> 覆盖/认领已有登记（需要下面用铸造钱包签名）</div>
     <div>
-      <button id="submitBtn">提交登记</button>
+      <button id="submitBtn">提交预登记并锁价</button>
       <button id="signBtn" class="secondary" type="button">用铸造钱包签名验证（可选）</button>
     </div>
     <div id="msg" class="msg"></div>
@@ -71,19 +105,75 @@
   </div>
 
   <div class="card">
-    <h2>打款记录 <span style="color:#8b94a3;font-weight:400;font-size:12px">（只显示真实打款，每笔都可在 BscScan 核对）</span></h2>
+    <h2>AI 自动代打提示词 <span style="color:#8b94a3;font-weight:400;font-size:12px">（币安 AI 钱包 BAW 专用）</span></h2>
+    <div class="note">先预登记 + BAW 提前预览秒打 + 卖出提前预览。复制给你的代打 AI，按顺序做三件事，每一步执行前都必须先给你看预览、等你亲口确认才动手。</div>
+    <div>
+      <button id="copyPromptBtn" type="button">一键复制提示词</button>
+      <button id="togglePromptBtn" class="secondary" type="button">展开全文</button>
+    </div>
+    <div id="copyMsg" class="msg"></div>
+    <pre class="prompt" id="aiPromptText" style="display:none;"># AI 自动代打提示词 — BIBI（仅此一盘）
+
+用法：把下面整段复制给你的代打 AI。按顺序做三件事：先预登记 → BAW 提前预览秒打 → 卖出提前预览。每一步执行前都必须先给你看预览、等你亲口说“确认执行”才动手。只适用于 BIBI，Agent ID $AI 已停铸、已从本站下线，不要拿这个提示词去打别的盘。
+
+固定事实（不要改、不要猜）
+- 网站：https://auto-payout.onrender.com ，项目只剩 BIBI 一个
+- 结算价：0.40 USDT / 10 份，固定价；登记有效期 24 小时，一个登记只兑付一次
+- 铸造合约 BibiSale：0x3ee0570567625D90a5DEE11290F159D4AaCD29C6
+- 代币 BIBI：0x6fC563428B3D6CdD151cB57f0CA5859615C02260（18 位）——这是代币合约，不是铸造合约，绝不往它打 BNB
+- 交易对 BIBI/WBNB：0x63b6a0f72fDA65684Db2aD6e60968c0ab0b22391
+- Router（PancakeSwap V2）：0x10ED43C718714eb63d5aA57B78B54704E256024E
+- 推荐人：主钱包 0xd6BfdAFDC17E6a84F0c468c215f5ed31B44F4910，即 caihongg.ai 的 owner。铸造时推荐人必须填这个，否则返佣不到主钱包，自动打款不会付。
+- 铸造钱包（BAW 主钱包）：0xd6BfdAFDC17E6a84F0c468c215f5ed31B44F4910
+- 份数：每次 10 份，一笔铸满。当前档位价约 0.0028 BNB/份，10 份约 0.028 BNB——每次打前必须链上重读 totalMinted() 与档位价重算，变了就按新价重报，不许沿用旧数。
+- 链：BNB Chain，chainId 56；BSC 的 USDT 是 18 位小数。
+
+安全铁律
+1. 只调上面列出的铸造合约和 Router，不调别的合约，不授权任何代币给不明地址。
+2. 每次 execute 之前必须先 preview，把预览全文贴给用户，等用户亲口说“确认执行”才执行。没有确认，一律不执行。
+3. 授权只批精确数量，不批无限授权。卖出授权 = 当时 BIBI 余额精确值。
+4. 铸造款 = 份数 × 当前档位价，精确到 wei；多一 wei 少一 wei 都不打。
+5. preview 报错 351803（风险拦截）就停；报错 351716（同地址有待确认单）就让用户先在 App 里处理前一单，不许绕过。
+6. BAW 登录只用二维码模式，不用链接登录。每次动手前先跑 baw wallet status，没登录就停下来等用户扫码。
+7. 任何一步失败，先查链上实际状态（回执、nonce、余额）再决定，不盲目重发。
+
+第一步：先预登记（不登记不打款）
+1. 打开网站，确认只有 BIBI，规则卡片显示结算价 0.40 USDT / 10 份、推荐人是主钱包。
+2. 查 /api/quote?project=bibi&amp;shares=10，记下 payoutUsdt、expectedRebateUsdt、guardOk。guardOk=false 就停下来报原因，不许继续。
+3. 在页面登记：铸造钱包 = 主钱包地址，收款地址 = 用户指定的收款地址。可用铸造钱包 personal_sign 签名锁定登记，签名原文：Register auto-payout: minter &lt;小写铸造地址&gt; pays out to &lt;小写收款地址&gt; (BSC USDT).
+4. 提交后确认返回 ok:true 与过期时间，过期前 24 小时内必须完成铸造，过期重登。
+
+第二步：BAW 提前预览秒打（铸造）
+1. 跑 baw wallet status 确认已登录，再跑 baw wallet settings --json 确认 Developer Mode 开启。两项缺一不可。
+2. 链上重读 totalMinted()、档位价、底池 BNB，算出本次 10 份的精确成本（wei）和预期到手量。把份数、单价、总价、推荐人、铸造合约五项贴给用户确认。
+3. 从官网 config / 前端 JS 里取 BIBI 的 mint 函数签名与参数，本地拼好 calldata。不许手猜函数名与参数顺序，取不到就停下来问，不许编。agentId = keccak256("caihongg")，不要带 .ai 后缀。
+4. 跑预览：baw contract-call preview --binanceChainId 56 --from &lt;主钱包地址&gt; --to 0x3ee0570567625D90a5DEE11290F159D4AaCD29C6 --value &lt;10 份总价 wei&gt; --inputData &lt;calldata&gt; --json
+5. 把 preview 全文贴给用户，等用户说“确认执行”，再跑 baw contract-call execute --requestId &lt;preview 返回的 requestId&gt; --json
+6. 执行后立刻查回执：status 必须是 1，核对链上 BIBI 到账数量与 totalMinted 涨了 10 份。失败先查 nonce 与余额，不许直接重发。
+
+第三步：卖出提前预览（铸完就卖，不攒）
+1. 铸造回执确认后，读主钱包 BIBI 余额，记为本次可卖量。
+2. 提前拼好卖出调用：Router 的 swapExactTokensForETHSupportingFeeOnTransferTokens，卖全部余额，minOut=1，路径 BIBI → WBNB，deadline 用当前块时间 + 300 秒。先在链下用池子储备估算预期到手 BNB，贴给用户（注明未扣滑点、税、gas）。
+3. 先预览授权：approve Router 可花额度 = 精确余额。preview 给用户看，确认后 execute。
+4. 再预览卖出：同样走 baw contract-call preview，把 to（Router）、value（0）、inputData 摘要、预期到手 BNB 贴给用户。等用户说“确认执行”，再 execute。
+5. 查卖出回执 status=1，核对 BNB 到账。卖完才算这一笔结束，不要留尾巴币等下一轮一起卖。
+6. 最后报一句话：铸造 10 份花了多少 BNB、卖出回了多少 BNB、自动打款 0.40 USDT 会在登记有效、推荐人正确的前提下由监听器在约 10–20 秒内打到收款地址（到账以 /api/payouts 的真实记录与 BscScan tx 为准，不许编造已打款）。</pre>
+    <div class="warnbox">⚠️ 铸造前必看：请先在页面顶部完成预登记，预登记 24 小时内有效；铸造时推荐人必须填主钱包地址；每一步执行前都要先看预览、等你确认。</div>
+  </div>
+
+  <div class="card">
+    <h2>打款记录 <span style="color:#8b94a3;font-weight:400;font-size:12px">（只显示真实打款，每笔都可在 BscScan 核对）</span> <button id="refreshPayoutsBtn" class="secondary" type="button" style="margin-top:0;padding:6px 12px;font-size:13px">刷新</button></h2>
     <div id="payouts"><div class="empty">加载中…</div></div>
   </div>
 
   <div class="card">
-    <h2>使用说明</h2>
+    <h2>规则说明</h2>
     <div class="note">
-      1. 选择项目，在这里登记你的铸造钱包地址和收款地址。<br>
-      2. <b>铸造时推荐人必须填运营方的推荐人地址</b>（见上方规则卡片），否则链上返佣不会到运营方，也就不会给你打款。<br>
-      3. 铸满 <b>指定份数（默认 10 份）</b>后，后端监听到链上铸造事件，约 10–20 秒内自动打款到你的收款地址。<br>
-      4. 如果登记后 24 小时内没铸造，登记过期，需要重新登记。<br>
-      5. 打款记录为空就是还没人兑付过——这里不展示任何编造的“历史订单”。<br>
-      6. 结算价可能是动态的：随铸造进度上调；底池低于阈值时切到稳健价。当前实时价见上方规则卡片。
+      1. 先预登记再铸造，登记 24 小时内有效，铸满 10 份才打款。<br>
+      2. <b>铸造时推荐人必须填主钱包地址</b>，否则返佣不到账、不打款。<br>
+      3. 铸满 10 份后约 10–20 秒自动打款到你的收款地址；打款超过预期返佣 × 0.9 时守卫会拦截。<br>
+      4. 每日打款上限 500 USDT，一个登记只兑付一次。<br>
+      5. 打款记录为空就是还没人兑付过——这里不展示任何编造的“历史订单”。数据每 30 秒自动刷新。
     </div>
   </div>
 </div>
@@ -118,6 +208,18 @@ async function loadTerms() {
     statusData = st;
     const pst = (st.projects || []).find(x => x.id === p.id) || {};
     const runway = pst.poolRunwayHours === null || pst.poolRunwayHours === undefined ? '—' : (pst.poolRunwayHours > 72 ? '>72 小时' : pst.poolRunwayHours.toFixed(1) + ' 小时');
+    const expected = q.expectedRebateUsdt === null || q.expectedRebateUsdt === undefined ? null : Number(q.expectedRebateUsdt);
+    const payout = Number(q.payoutUsdt);
+    const margin = expected === null ? null : expected - payout;
+    $('liveBadge').innerHTML = st.dryRun ? '<span class="badge dry">干跑模式</span>' : '<span class="badge">● LIVE 已上线</span>';
+    $('statusLine').innerHTML = `<span class="ok">● 链上正常 · 可继续铸造</span> · 已扫区块 #${pst.lastScannedBlock ?? '—'} · 数据每 30 秒自动刷新 · 底池预计可用 ${runway}`;
+    $('statPrice').textContent = q.payoutUsdt + ' USDT';
+    $('statPriceSub').textContent = '每 ' + p.requiredShares + ' 份' + (q.guardOk ? '' : ' · 守卫拦截');
+    $('statMinted').textContent = (q.totalMinted === null || q.totalMinted === undefined) ? '—' : Number(q.totalMinted).toLocaleString() + ' 份';
+    $('statPool').textContent = (q.poolBnb === null || q.poolBnb === undefined) ? '—' : Number(q.poolBnb).toFixed(2) + ' BNB';
+    $('statPoolSub').textContent = (q.poolBnb !== null && q.poolBnb !== undefined && q.poolBnb < 25) ? '⚠️ 底池接近 20 BNB 稳健线' : 'PancakeSwap V2 储备';
+    $('statHot').textContent = (st.hotWalletUsdt === null || st.hotWalletUsdt === undefined) ? '—' : Number(st.hotWalletUsdt).toFixed(2) + ' USDT';
+    $('statHotSub').textContent = st.hotWallet ? short(st.hotWallet) : '未设置';
     $('terms').innerHTML = `
       <div class="row"><span class="k">当前结算价</span><span class="v">${q.payoutUsdt} USDT / ${p.requiredShares} 份 ${q.guardOk ? '' : '<span class="badge warn">守卫拦截：暂不打款</span>'}</span></div>
       <div class="row"><span class="k">已铸</span><span class="v">${q.totalMinted === null || q.totalMinted === undefined ? '—' : q.totalMinted.toLocaleString() + ' 份'}</span></div>
@@ -128,6 +230,11 @@ async function loadTerms() {
       <div class="row"><span class="k">推荐人地址（铸造时填这个）</span><span class="v"><code>${p.operatorReferrer || '未设置'}</code></span></div>
       <div class="row"><span class="k">热钱包</span><span class="v"><code>${st.hotWallet || '未设置'}</code>（余额 ${st.hotWalletUsdt === null || st.hotWalletUsdt === undefined ? '—' : Number(st.hotWalletUsdt).toFixed(2) + ' USDT'}）</span></div>
       <div class="row"><span class="k">运行状态</span><span class="v">${st.dryRun ? '<span class="badge dry">干跑模式（不发真钱）</span>' : '<span class="badge">已上线</span>'} · 已扫到区块 ${pst.lastScannedBlock ?? '—'}</span></div>`;
+    $('netLine').innerHTML = expected === null
+      ? '<div class="note">预期返佣暂算不出来（BNB 价单次超时也会这样），刷新一次再看；守卫算不出来时会拦截，不会误打。</div>'
+      : `<div class="row"><span class="k">预期返佣（10 份）</span><span class="v">约 $${expected.toFixed(2)}</span></div>
+         <div class="row"><span class="k">结算价</span><span class="v">${payout.toFixed(2)} USDT</span></div>
+         <div class="row"><span class="k">每号毛利（未扣 gas / 滑点 / 税）</span><span class="v">约 $${margin.toFixed(2)}</span></div>`;
   } catch (e) {
     $('terms').innerHTML = '<div class="empty">规则加载失败，请稍后刷新。</div>';
   }
@@ -191,6 +298,27 @@ $('submitBtn').onclick = async () => {
     $('submitBtn').disabled = false;
   }
 };
+
+$('copyPromptBtn').onclick = async () => {
+  const text = $('aiPromptText').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    $('copyMsg').textContent = '已复制，去粘贴给你的代打 AI 就行。';
+    $('copyMsg').className = 'msg ok';
+  } catch (e) {
+    $('copyMsg').textContent = '复制失败，请手动选中全文复制：' + e.message;
+    $('copyMsg').className = 'msg err';
+  }
+};
+
+$('togglePromptBtn').onclick = () => {
+  const el = $('aiPromptText');
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  $('togglePromptBtn').textContent = open ? '收起全文' : '展开全文';
+};
+
+$('refreshPayoutsBtn').onclick = () => { loadPayouts(); };
 
 (async () => {
   await loadConfig();
